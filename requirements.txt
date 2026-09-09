@@ -1,0 +1,16 @@
+# RTL-SDR V4 Diagnostic & Spectrum Monitor
+# Python 3.12 recommended
+PySide6>=6.6
+numpy>=1.26
+scipy>=1.11
+pyqtgraph>=0.13
+
+# OPTIONAL. The application talks to librtlsdr through its own ctypes binding
+# (rtlsdr_diag/sdr/native.py) and does not need this package. pyrtlsdr is kept
+# only as a fallback backend. Note that pyrtlsdr 0.5.0 fails to import against
+# librtlsdr builds that do not export rtlsdr_set_dithering - including the
+# RTL-SDR Blog V1.4.0 Windows release - which is precisely why the built-in
+# binding exists.
+#
+# You still need the native rtlsdr.dll and the WinUSB driver (Zadig). See README.
+# pyrtlsdr>=0.3.0

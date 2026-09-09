@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Executable build output (build it with: python build_exe.py)
+build/
+dist/
+*.spec
+
+# Tools downloaded on first run (Zadig)
+tools_bin/
+
+# Session data: RF observations recorded while the program was running.
+# These are measurements from wherever the receiver happened to be, so they
+# are not part of the project and should not be published with it.
+*.csv
+
+# Windows
+Thumbs.db
+desktop.ini
+*.lnk
