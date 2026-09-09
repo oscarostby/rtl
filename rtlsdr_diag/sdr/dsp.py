@@ -25,10 +25,23 @@ def window(n: int) -> np.ndarray:
     return w
 
 
-def psd_dbfs(iq: np.ndarray, fft_size: int, max_segments: int = 8) -> np.ndarray:
-    """Averaged periodogram in dBFS, fft-shifted (index 0 = lowest frequency).
+def psd_dbfs(iq: np.ndarray, fft_size: int, max_segments: int = 8,
+             combine: str = "mean") -> np.ndarray:
+    """Periodogram in dBFS, fft-shifted (index 0 = lowest frequency).
 
     0 dBFS corresponds to a full-scale complex sinusoid (|I|,|Q| ~ 1.0).
+
+    `combine` decides what happens across the segments of one block:
+
+    "mean"  averages them, which is right for a carrier that is simply there -
+            it settles the noise down and the measurement with it.
+
+    "max"   keeps the loudest value each bin reached in any segment. A TDMA
+            transmitter is only on for a quarter of the time, so averaging
+            spreads its power across three parts silence and buries it. Keeping
+            the peak measures the burst as it actually was. The noise floor
+            rises too, by about 10*log10 of the segment count's harmonic sum,
+            but that costs a few dB where averaging costs the signal entirely.
     """
     n = len(iq)
     if n < fft_size:
@@ -37,15 +50,23 @@ def psd_dbfs(iq: np.ndarray, fft_size: int, max_segments: int = 8) -> np.ndarray
     nseg = max(nseg, 1)
     w = window(fft_size)
     wsum = w.sum()
+    peak = combine == "max"
     acc = np.zeros(fft_size, dtype=np.float64)
+    used = 0
     for i in range(nseg):
         seg = iq[i * fft_size:(i + 1) * fft_size]
         if len(seg) < fft_size:
             break
         seg = seg - seg.mean()          # remove the RTL-SDR DC offset / centre spike
         spec = np.fft.fft(seg * w) / wsum
-        acc += spec.real ** 2 + spec.imag ** 2
-    acc /= nseg
+        power = spec.real ** 2 + spec.imag ** 2
+        if peak:
+            np.maximum(acc, power, out=acc)
+        else:
+            acc += power
+        used += 1
+    if not peak:
+        acc /= max(1, used)
     return np.fft.fftshift(10.0 * np.log10(acc + 1e-20))
 
 

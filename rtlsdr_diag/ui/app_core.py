@@ -173,6 +173,8 @@ class AppCore(QObject):
             min_bandwidth_hz=spec.min_bandwidth_hz,
             smoothing_hz=spec.smoothing_hz,
             gap_hz=spec.gap_hz,
+            dwell_s=spec.dwell_s,
+            psd_combine=spec.psd_combine,
             detect=True,
             label="Detector",
         )
@@ -207,6 +209,8 @@ class AppCore(QObject):
             "min_bandwidth_hz": spec.min_bandwidth_hz,
             "smoothing_hz": spec.smoothing_hz,
             "gap_hz": spec.gap_hz,
+            "dwell_s": spec.dwell_s,
+            "psd_combine": spec.psd_combine,
             "gain": self.gain_for(nxt),
         })
         self._refresh_status()

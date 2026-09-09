@@ -56,8 +56,9 @@ print("--- duplex separation: mast vs mobile ---")
 for freq, on_mast, on_mobile, why in (
         (380.0125e6, False, True, "uplink edge"),
         (383.9880e6, False, True, "measured uplink carrier"),
-        (384.9e6, False, True, "top of the uplink"),
-        (387.0e6, False, False, "duplex gap belongs to neither"),
+        (384.9e6, False, True, "the emergency-services core"),
+        (387.0e6, False, True, "still uplink: it pairs with 397"),
+        (389.9e6, False, True, "top of the uplink half"),
         (390.0125e6, True, False, "downlink edge"),
         (391.4120e6, True, False, "measured downlink carrier"),
         (396.0120e6, True, False, "measured carrier above 395"),

@@ -69,6 +69,12 @@ class ModeSpec:
     # How to read this band's name out loud. The titles are set in capitals
     # for the screen, which a voice reads letter by letter.
     spoken: str = ""
+    # Seconds to sit on each sweep step, and how to combine the block. Left at
+    # 0/"mean" a step lasts however long fft_size*averages takes - about 16 ms,
+    # which is shorter than the 42 ms of silence between one TDMA burst and the
+    # next, so a step can land in the gap and see nothing.
+    dwell_s: float = 0.0
+    psd_combine: str = "mean"
 
     def range_text(self) -> str:
         return "%.1f - %.1f MHz" % (self.start_hz / 1e6, self.stop_hz / 1e6)
@@ -85,7 +91,12 @@ class ModeSpec:
                 and self.contains(detection.freq_hz))
 
     def contains(self, freq_hz: float) -> bool:
-        return self.start_hz <= freq_hz <= self.stop_hz
+        """Half-open: [start, stop).
+
+        The uplink half ends where the downlink half begins, so an inclusive
+        top edge would put a carrier exactly on the seam in both bands at once.
+        """
+        return self.start_hz <= freq_hz < self.stop_hz
 
 
 MODE_SPECS = {
@@ -107,7 +118,7 @@ MODE_SPECS = {
     # to 400 because other licensed TETRA infrastructure sits above it, and a
     # continuous high-power carrier there is still a mast, not a handset.
     TETRA_MAST: ModeSpec(
-        TETRA_MAST, "TETRA MAST", TETRA_DOWNLINK_BAND[0], 400.0e6,
+        TETRA_MAST, "TETRA MAST", TETRA_DOWNLINK_BAND[0], TETRA_DOWNLINK_BAND[1],
         2.048e6, 8.0, min_bandwidth_hz=10e3, smoothing_hz=2e3, gap_hz=5e3,
         classes=(CLASS_TETRA,),
         caption="base station downlink - continuous", audio_mode="ENV",
@@ -122,7 +133,12 @@ MODE_SPECS = {
         caption="terminal uplink - a radio transmitting near you",
         bursty=True, audio_mode="ENV",
         audio_note="Plays the rhythm of the transmission, not its content.",
-        gain="max", spoken="TETRA mobile radio"),
+        gain="max", spoken="TETRA mobile radio",
+        # One TETRA frame is 56.7 ms and a terminal occupies one slot in four.
+        # 70 ms guarantees a whole frame is inside the step, and keeping each
+        # bin's loudest segment measures the burst instead of averaging it
+        # against the three quarters of silence around it.
+        dwell_s=0.070, psd_combine="max"),
 }
 
 

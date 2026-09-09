@@ -58,6 +58,12 @@ class AcqConfig:
     gap_hz: float = 3000.0
     detect: bool = False
     label: str = ""
+    # How long to sit on each sweep step. 0 means "as long as fft_size times
+    # averages happens to take". A bursty band needs this set long enough to
+    # contain a whole frame of whatever is transmitting, or a step can land in
+    # the silence between two bursts and see nothing at all.
+    dwell_s: float = 0.0
+    psd_combine: str = "mean"
     # Audio demodulation
     audio: bool = False
     audio_mode: str = demod.MODE_WFM
@@ -342,6 +348,9 @@ class SdrEngine(QObject):
             # device's own timing pace the loop.
             n = int(cfg.sample_rate * AUDIO_BLOCK_SECONDS)
             n = max(n, cfg.fft_size)
+        elif cfg.dwell_s > 0.0:
+            n = int(cfg.sample_rate * cfg.dwell_s)
+            n = max(n, cfg.fft_size)
         else:
             n = cfg.fft_size * max(1, cfg.averages)
         n = min(n, 1 << 20)
@@ -384,7 +393,12 @@ class SdrEngine(QObject):
 
     def _emit_frame(self, iq: np.ndarray, center: float, with_stats: bool = False) -> np.ndarray:
         cfg = self._cfg
-        power = dsp.psd_dbfs(iq, cfg.fft_size, max_segments=max(1, cfg.averages))
+        # With a timed dwell every segment of the block is wanted, otherwise
+        # the extra samples read for it would simply be discarded.
+        segments = (max(1, len(iq) // max(1, cfg.fft_size)) if cfg.dwell_s > 0.0
+                    else max(1, cfg.averages))
+        power = dsp.psd_dbfs(iq, cfg.fft_size, max_segments=segments,
+                             combine=cfg.psd_combine)
         freqs = dsp.freq_axis(center, cfg.sample_rate, power.size)
         nf = dsp.noise_floor_db(power)
         with self._pending_lock:

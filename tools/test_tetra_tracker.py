@@ -84,8 +84,14 @@ check("table presents burst count", table.item(0, 7).text() == "2")
 hint = table.item(0, 5).text()
 check("duplex label is explicitly inferred",
       hint == "Downlink-plan band (inferred)", hint)
-check("out-of-pair frequencies stay neutral",
-      _duplex_plan_hint(387_000_000.0) == "Outside paired bands")
+# 385-390 is uplink spectrum paired with 395-400, so a carrier there is a
+# terminal, not something outside the plan.
+check("the upper uplink half is recognised as uplink",
+      _duplex_plan_hint(387_000_000.0) == "Uplink-plan band (inferred)",
+      _duplex_plan_hint(387_000_000.0))
+check("a frequency outside TETRA altogether stays neutral",
+      _duplex_plan_hint(405_000_000.0) == "Outside paired bands",
+      _duplex_plan_hint(405_000_000.0))
 
 # Reproduce the real QScrollArea arrangement with more rows than fit in its
 # viewport.  The timeline's minimum height must include every row and the axis

@@ -37,8 +37,15 @@ TETRA_BAND = (380.0e6, 400.0e6)
 # in therefore tells you what kind of transmitter it is - a mobile near you, or
 # a mast. These are the usual European emergency-services values; other
 # countries and other TETRA users differ, so they are editable in the GUI.
-TETRA_UPLINK_BAND = (380.0e6, 385.0e6)     # mobiles / vehicle radios transmit
-TETRA_DOWNLINK_BAND = (390.0e6, 395.0e6)   # base stations transmit
+# The whole lower half of the duplex plan. The emergency-services core is
+# 380-385 paired with 390-395, but other licensed TETRA sits above that, and a
+# carrier at 396 has its terminals at 386 - outside a 380-385 window, which
+# would simply never be looked at.
+TETRA_UPLINK_BAND = (380.0e6, 390.0e6)     # mobiles / vehicle radios transmit
+# ...and the whole upper half, paired with it 10 MHz up. 390-395 is the
+# emergency-services core, 395-400 carries other licensed TETRA. Both halves
+# have to span the same 10 MHz or a carrier in one has no partner in the other.
+TETRA_DOWNLINK_BAND = (390.0e6, 400.0e6)   # base stations transmit
 TETRA_DUPLEX_SPACING_HZ = 10.0e6
 
 # A mobile puts out about 1-3 W into a small antenna; a base station puts out
