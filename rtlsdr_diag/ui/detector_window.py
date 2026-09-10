@@ -279,6 +279,18 @@ class SettingsOverlay(QFrame):
         self.alerts.setChecked(False)
         grid.addWidget(self.alerts)
 
+        self.pair_watch = QCheckBox(
+            "Watch the channels paired with the local mast")
+        self.pair_watch.setChecked(True)
+        self.pair_watch.setToolTip(
+            "TETRA transmits 10 MHz apart, so every mast carrier you receive "
+            "names the channel a terminal on that cell would answer on. "
+            "Sitting on those channels watches them all the time; sweeping the "
+            "whole band watches each one about a third of the time, and a "
+            "short transmission can fall into the gap.")
+        self.pair_watch.toggled.connect(self._pair_watch_changed)
+        grid.addWidget(self.pair_watch)
+
         self.speak = QCheckBox("Say out loud what is found")
         self.speak.setChecked(True)
         self.speak.setToolTip(
@@ -347,6 +359,9 @@ class SettingsOverlay(QFrame):
 
     def _focus_changed(self, enabled: bool) -> None:
         self.app.rotation.focused = bool(enabled)
+
+    def _pair_watch_changed(self, enabled: bool) -> None:
+        self.app.pair_watch = bool(enabled)
 
     def _smoothing_changed(self) -> None:
         mode = self.smoothing.currentData()
@@ -693,7 +708,24 @@ class DetectorWindow(QMainWindow):
             self.log_panel.refresh()
         self._maybe_beep(page.state, now)
         self._drive_tone()
+        self._update_watch_note()
         self._announce(page.state, now)
+
+    def _update_watch_note(self) -> None:
+        """Say which uplink channels the receiver is actually sitting on."""
+        state = self.states.get(TETRA_MOBILE)
+        if state is None:
+            return
+        window = self.core.pair_window if self.core.pair_watch else None
+        if window is None:
+            state.watch_note = ("sweeping the whole uplink band"
+                                if self.core.pair_watch else "")
+            return
+        start, stop, count = window
+        state.watch_note = ("watching %d channel%s paired with the mast   "
+                            "%.3f - %.3f MHz"
+                            % (count, "" if count == 1 else "s",
+                               start / 1e6, stop / 1e6))
 
     def _announce(self, state, now: float) -> None:
         """Say the changes worth interrupting for, and nothing else."""

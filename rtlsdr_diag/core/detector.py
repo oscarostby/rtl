@@ -128,7 +128,11 @@ MODE_SPECS = {
     # someone is actually transmitting, so this is bursty and short range.
     TETRA_MOBILE: ModeSpec(
         TETRA_MOBILE, "TETRA MOBILE", TETRA_UPLINK_BAND[0], TETRA_UPLINK_BAND[1],
-        2.048e6, 8.0, min_bandwidth_hz=10e3, smoothing_hz=2e3, gap_hz=5e3,
+        # 2.4 MS/s rather than the mast band's 2.048: the receiver can only sit
+        # on 75% of its sample rate at once, and the strong uplink partners at
+        # one real site spanned 1.61 MHz - just wider than 2.048 allows, so a
+        # single window had to drop one of them.
+        2.4e6, 8.0, min_bandwidth_hz=10e3, smoothing_hz=2e3, gap_hz=5e3,
         classes=(CLASS_TETRA,),
         caption="terminal uplink - a radio transmitting near you",
         bursty=True, audio_mode="ENV",
@@ -160,6 +164,9 @@ class DetectorState:
         # While listening the sweep is parked, so no detections arrive and the
         # meter is driven by the level in the audio channel instead.
         self.listening = False
+        # What the receiver is actually pointed at, when that is narrower than
+        # the whole band. Set by the window; shown when the page is quiet.
+        self.watch_note = ""
         self.listen_snr_db = 0.0
         self.listen_noise_dbfs = -80.0
 

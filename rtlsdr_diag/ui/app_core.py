@@ -16,6 +16,7 @@ from ..core.acquisition import AcquisitionState, AcquisitionStatus, state_for
 from ..core.csvlog import CsvLogger
 from ..core.detector import (MODE_SPECS, MODES, TETRA_MOBILE,
                              BandRotation)
+from ..core.duplex import watch_window
 from ..core.observations import ObservationLog
 from ..core import provisioning
 from ..core.signal_store import SignalStore
@@ -75,6 +76,11 @@ class AppCore(QObject):
         # None means "let each band use the gain that suits it"; a number is
         # the user overriding that for every band from the settings panel.
         self.gain_override = None
+        # Sit on the uplink channels paired with the masts being received,
+        # instead of sweeping the band and watching each channel a third of
+        # the time. Set from the settings panel.
+        self.pair_watch = True
+        self.pair_window = None          # (start_hz, stop_hz, channels)
 
         # Uplink is bursty and short-lived, so it is logged the moment it is
         # seen. Nothing but time, frequency and level is recorded - no content
@@ -160,15 +166,34 @@ class AppCore(QObject):
     def apply_gain(self) -> None:
         self.engine_update({"gain": self.gain_for(self._band)})
 
+    def sweep_range(self, band: str):
+        """Where to point the receiver for this band.
+
+        For the mobile band that is normally one window over the channels
+        paired with the local masts, which are the only uplink channels that
+        can carry traffic here - see core/duplex.py.
+        """
+        spec = MODE_SPECS[band]
+        if band != TETRA_MOBILE or not self.pair_watch:
+            self.pair_window = None if band == TETRA_MOBILE else self.pair_window
+            return spec.start_hz, spec.stop_hz
+        usable = spec.sample_rate * 0.75
+        placed = watch_window(self.signal_store.items(), usable)
+        self.pair_window = placed
+        if placed is None:
+            return spec.start_hz, spec.stop_hz      # nothing heard yet: sweep
+        return placed[0], placed[1]
+
     def _config_for(self, band: str) -> AcqConfig:
         spec = MODE_SPECS[band]
+        start, stop = self.sweep_range(band)
         return AcqConfig(
             mode=MODE_SWEEP,
-            center_hz=(spec.start_hz + spec.stop_hz) / 2.0,
+            center_hz=(start + stop) / 2.0,
             sample_rate=spec.sample_rate,
             gain=self.gain_for(band),
-            sweep_start_hz=spec.start_hz,
-            sweep_stop_hz=spec.stop_hz,
+            sweep_start_hz=start,
+            sweep_stop_hz=stop,
             snr_threshold_db=spec.snr_threshold_db,
             min_bandwidth_hz=spec.min_bandwidth_hz,
             smoothing_hz=spec.smoothing_hz,
@@ -201,9 +226,10 @@ class AppCore(QObject):
         spec = MODE_SPECS[nxt]
         # A live settings change - the device stays open and the thread keeps
         # running; only the sweep range and detector parameters move.
+        start, stop = self.sweep_range(nxt)
         self._update_requested.emit({
-            "sweep_start_hz": spec.start_hz,
-            "sweep_stop_hz": spec.stop_hz,
+            "sweep_start_hz": start,
+            "sweep_stop_hz": stop,
             "sample_rate": spec.sample_rate,
             "snr_threshold_db": spec.snr_threshold_db,
             "min_bandwidth_hz": spec.min_bandwidth_hz,

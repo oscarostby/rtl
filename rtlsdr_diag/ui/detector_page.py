@@ -145,6 +145,10 @@ class DetectorPage(QWidget):
                      else "nothing detected in this band")
             self._text(p, QRectF(0, meter.bottom() + unit * 1.0, w, unit * 1.8),
                        quiet, size=unit * 1.2, colour=DIM)
+            if state.watch_note:
+                self._text(p,
+                           QRectF(0, meter.bottom() + unit * 2.6, w, unit * 1.6),
+                           state.watch_note, size=unit * 1.0, colour=MUTED)
             age = state.seconds_since_activity()
             if age != float("inf"):
                 if age < 90:
@@ -154,7 +158,7 @@ class DetectorPage(QWidget):
                 else:
                     ago = "over an hour ago"
                 self._text(p,
-                           QRectF(0, meter.bottom() + unit * 2.8, w, unit * 1.8),
+                           QRectF(0, meter.bottom() + unit * 4.2, w, unit * 1.8),
                            "last activity %s   %.4f MHz"
                            % (ago, state.last_activity_freq_hz / 1e6),
                            size=unit * 1.1, colour=MUTED)
